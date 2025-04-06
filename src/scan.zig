@@ -47,19 +47,28 @@ fn truncate(comptime T: type, comptime field: anytype, x: anytype) std.meta.fiel
 
 
 fn statAt(parent: std.fs.Dir, name: [:0]const u8, follow: bool, symlink: *bool) !sink.Stat {
-    const stat = try std.posix.fstatatZ(parent.fd, name, if (follow) 0 else std.posix.AT.SYMLINK_NOFOLLOW);
-    symlink.* = std.posix.S.ISLNK(stat.mode);
+    // std.posix.fstatatZ() is currently unusable due to https://github.com/ziglang/zig/issues/23463
+    var stat: c.struct_stat = undefined;
+    if (c.fstatat(parent.fd, name, &stat, if (follow) 0 else c.AT_SYMLINK_NOFOLLOW) != 0)
+        return switch (std.c._errno().*) {
+            c.ENOENT => error.FileNotFound,
+            c.ENAMETOOLONG => error.NameTooLong,
+            c.ENOMEM => error.OutOfMemory,
+            c.EACCES => error.AccessDenied,
+            else => error.Unexpected,
+        };
+    symlink.* = c.S_ISLNK(stat.st_mode);
     return sink.Stat{
         .etype =
-            if (std.posix.S.ISDIR(stat.mode)) .dir
-            else if (stat.nlink > 1) .link
-            else if (!std.posix.S.ISREG(stat.mode)) .nonreg
+            if (c.S_ISDIR(stat.st_mode)) .dir
+            else if (stat.st_nlink > 1) .link
+            else if (!c.S_ISREG(stat.st_mode)) .nonreg
             else .reg,
-        .blocks = clamp(sink.Stat, .blocks, stat.blocks),
-        .size = clamp(sink.Stat, .size, stat.size),
-        .dev = truncate(sink.Stat, .dev, stat.dev),
-        .ino = truncate(sink.Stat, .ino, stat.ino),
-        .nlink = clamp(sink.Stat, .nlink, stat.nlink),
+        .blocks = clamp(sink.Stat, .blocks, stat.st_blocks),
+        .size = clamp(sink.Stat, .size, stat.st_size),
+        .dev = truncate(sink.Stat, .dev, stat.st_dev),
+        .ino = truncate(sink.Stat, .ino, stat.st_ino),
+        .nlink = clamp(sink.Stat, .nlink, stat.st_nlink),
         .ext = .{
             .pack = .{
                 .hasmtime = true,
@@ -67,10 +76,10 @@ fn statAt(parent: std.fs.Dir, name: [:0]const u8, follow: bool, symlink: *bool) 
                 .hasgid = true,
                 .hasmode = true,
             },
-            .mtime = clamp(model.Ext, .mtime, stat.mtime().sec),
-            .uid = truncate(model.Ext, .uid, stat.uid),
-            .gid = truncate(model.Ext, .gid, stat.gid),
-            .mode = truncate(model.Ext, .mode, stat.mode),
+            .mtime = clamp(model.Ext, .mtime, stat.st_mtim.tv_sec),
+            .uid = truncate(model.Ext, .uid, stat.st_uid),
+            .gid = truncate(model.Ext, .gid, stat.st_gid),
+            .mode = truncate(model.Ext, .mode, stat.st_mode),
         },
     };
 }
