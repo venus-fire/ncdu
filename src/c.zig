@@ -10,9 +10,6 @@ pub const c = @cImport({
     @cInclude("locale.h"); // setlocale() and localeconv()
     @cInclude("fnmatch.h"); // fnmatch()
     @cInclude("unistd.h"); // getuid()
-    @cInclude("errno.h"); // error codes
-    @cInclude("fcntl.h"); // AT_SYMLINK_NOFOLLOW
-    @cInclude("sys/stat.h"); // fstatat()
     @cInclude("sys/types.h"); // struct passwd
     @cInclude("pwd.h"); // getpwnam(), getpwuid()
     if (@import("builtin").os.tag == .linux) {
