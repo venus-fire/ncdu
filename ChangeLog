@@ -1,6 +1,10 @@
 # SPDX-FileCopyrightText: Yorhel <projects@yorhel.nl>
 # SPDX-License-Identifier: MIT
 
+2.9.1 - 2025-08-21
+	- Add support for building with Zig 0.15
+	- Zig 0.14 is still supported
+
 2.9 - 2025-08-16
 	- Still requires Zig 0.14
 	- Add --delete-command option to replace the built-in file deletion
