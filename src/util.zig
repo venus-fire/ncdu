@@ -231,9 +231,18 @@ pub const LineReader = if (@hasDecl(std.io, "bufferedReader")) struct {
     }
 
     pub fn read(s: *@This()) !?[]u8 {
-        return s.rd.interface.takeDelimiterExclusive('\n') catch |err| switch (err) {
-            error.EndOfStream => null,
+        // Avoid takeDelimiterExclusive() for now, it's bugged in 0.15.2: https://github.com/ziglang/zig/issues/25664
+        const r = &s.rd.interface;
+        const result = r.peekDelimiterInclusive('\n') catch |err| switch (err) {
+            error.EndOfStream => {
+                const remaining = r.buffer[r.seek..r.end];
+                if (remaining.len == 0) return null;
+                r.toss(remaining.len);
+                return remaining;
+            },
             else => |e| return e,
         };
+        r.toss(result.len);
+        return result[0 .. result.len - 1];
     }
 };
