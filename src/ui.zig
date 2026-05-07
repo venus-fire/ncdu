@@ -652,6 +652,28 @@ fn waitInput() void {
     }
 }
 
+// Spawn a process in the background without touching the ncurses UI.
+// Double-forks so the grandchild is orphaned by init (no zombies).
+pub fn spawnDetached(path: [:0]const u8) void {
+    const pid = std.posix.fork() catch return;
+    if (pid != 0) {
+        _ = std.posix.waitpid(pid, 0);
+        return;
+    }
+    // Intermediate child: fork again so grandchild is adopted by init.
+    const pid2 = std.posix.fork() catch std.posix.exit(1);
+    if (pid2 != 0) std.posix.exit(0);
+    // Grandchild: redirect stdio to /dev/null, exec xdg-open.
+    const null_fd = std.posix.open("/dev/null", .{ .ACCMODE = .RDWR }, 0) catch std.posix.exit(1);
+    std.posix.dup2(null_fd, 0) catch {};
+    std.posix.dup2(null_fd, 1) catch {};
+    std.posix.dup2(null_fd, 2) catch {};
+    if (null_fd > 2) std.posix.close(null_fd);
+    var argv = [_][*c]u8{ @constCast("xdg-open"), @constCast(path.ptr), null };
+    _ = c.execvp("xdg-open", @ptrCast(&argv));
+    std.posix.exit(1);
+}
+
 pub fn runCmd(cmd: []const []const u8, cwd: ?[]const u8, env: *std.process.EnvMap, reporterr: bool) void {
     deinit();
     defer init();

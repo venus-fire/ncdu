@@ -110,6 +110,7 @@ pub const config = struct {
     pub var can_delete: ?bool = null;
     pub var can_shell: ?bool = null;
     pub var can_refresh: ?bool = null;
+    pub var can_open: ?bool = null;
     pub var confirm_quit: bool = false;
     pub var confirm_delete: bool = true;
     pub var ignore_delete_errors: bool = false;
@@ -216,6 +217,8 @@ fn argConfig(args: *Args, opt: Args.Option, infile: bool) !void {
     else if (opt.is("-r")) config.can_delete = false
     else if (opt.is("--enable-shell")) config.can_shell = true
     else if (opt.is("--disable-shell")) config.can_shell = false
+    else if (opt.is("--enable-open")) config.can_open = true
+    else if (opt.is("--disable-open")) config.can_open = false
     else if (opt.is("--enable-delete")) config.can_delete = true
     else if (opt.is("--disable-delete")) config.can_delete = false
     else if (opt.is("--enable-refresh")) config.can_refresh = true
@@ -583,6 +586,7 @@ pub fn main() void {
     config.can_shell = config.can_shell orelse !config.imported;
     config.can_delete = config.can_delete orelse !config.imported;
     config.can_refresh = config.can_refresh orelse !config.imported;
+    config.can_open = config.can_open orelse true;
 
     config.scan_ui = .full; // in case we're refreshing from the UI, always in full mode.
     ui.init();

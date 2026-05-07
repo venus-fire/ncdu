@@ -692,6 +692,7 @@ const help = struct {
                   "i", "Show information about selected item",
                   "r", "Recalculate the current directory",
                   "b", "Spawn shell in current directory",
+                  "o", "Open selected file or directory",
                   "q", "Quit ncdu"
     };
     const keylines = 10;
@@ -971,6 +972,19 @@ pub fn keyInput(ch: i32) void {
                 message = &.{"Shell feature disabled.", "Re-run with --enable-shell to enable this option."}
             else
                 main.state = .shell;
+        },
+        'o' => {
+            if (main.config.binreader)
+                message = &.{"Open feature is not available when reading from file."}
+            else if (!main.config.can_open.?)
+                message = &.{"Open feature disabled.", "Re-run with --enable-open to enable this option."}
+            else if (dir_items.items.len > 0) {
+                if (dir_items.items[cursor_idx]) |e| {
+                    const path = std.fs.path.joinZ(main.allocator, &.{ dir_path, e.name() }) catch unreachable;
+                    defer main.allocator.free(path);
+                    ui.spawnDetached(path);
+                }
+            }
         },
         'd' => {
             if (dir_items.items.len == 0) {
